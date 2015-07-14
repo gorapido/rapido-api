@@ -1,12 +1,19 @@
 {
   "name": "rapido-api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Backend API to manage DB connections with native applications",
   "main": "rapido-api.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "author": "Michael Kimball",
+  "contributoers": [
+    {
+      "name": "Alexander Hernandez",
+      "email": "alex@gorapido.co",
+      "url": "about.me/porialex"
+    }
+  ],
   "dependencies": {
     "express": "~4.13.0",
     "sequelize": "~3.3.2",
@@ -18,7 +25,10 @@
     "pg": "~4.4.0"
   },
   "devDependencies": {
-    "mocha": "~2.2.5",
-    "gulp": "~3.9.0"
+    "gulp": "~3.9.0",
+    "gulp-jshint": "^1.11.2",
+    "gulp-mocha": "^2.1.2",
+    "jshint": "^2.8.0",
+    "mocha": "~2.2.5"
   }
 }
