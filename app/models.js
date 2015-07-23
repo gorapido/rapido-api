@@ -1,104 +1,142 @@
-var bcrypt = require('bcrypt-nodejs')
-var schema = require('./db/schema');
-var UserTable = schema.UserTable;
+// Global packages
+var Sequelize = require('sequelize'),
+  bcrypt = require('bcrypt-nodejs');
 
-var User = function(attributes){
-	this._table = new UserTable();
+// Configuration by NODE_ENV (test, development, production)
+var env = process.env.NODE_ENV || "development";
+var config = require('./../config')[env];
+var database = config.database;
 
-	// Relational members
-	this._jobs = [];
+// DB connection
+var connection = new Sequelize(database.name, database.username, database.password, database.options);
 
-	// General members
-	this._firstName = attributes.firstName;
-	this._lastName = attributes.lastName;
-	this._email = attributes.email;
-	this._password = attributes.password;
-	this._phone = attributes.phone;
-	this._street = attributes.street;
-	this._city = attributes.city;
-	this._state = attributes.state;
-	this._postalCode = attributes.postalCode;
-};
+// Check if connection was successful
+connection.authenticate().catch(function(error) {
+  throw new Error("Database connection failed! Please check your configuration.");
+});
 
-User.prototype = {
-	getFirstName: function(){ return this.firstName; },
-	getLastName: function(){ return this.lastName; },
-	getEmail: function(){ return this.email },
-	getPassword: function(){ return this.password },
-	getPhone: function(){ return this.phone },
-	getStreet: function(){ return this.street },
-	getCity: function(){ return this.city },
-	getState: function(){ return this.state },
-	getPostalCode: function(){ return this.postalCode },
-	setId: function(id){ this.id = id; },
-	getId: function(){ return this.id }
-};
+// User Model
+var User = connection.define('user', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  first_name: {
+    type: Sequelize.STRING,
+    validate: {
+      isAlpha: true,
+      isUppercase: true,
+      notNull: true,
+      notEmpty: true
+    },
+    set: function(val) {
+      this.setDataValue('first_name', val.toUpperCase());
+    }
+  },
+  last_name: {
+    type: Sequelize.STRING,
+    validate: {
+      isAlpha: true,
+      isUppercase: true,
+      notNull: true,
+      notEmpty: true
+    },
+    set: function(val) {
+      this.setDataValue('last_name', val.toUpperCase());
+    }
+  },
+  phone: {
+    type: Sequelize.STRING,
+    validate: {
+      notNull: true,
+      notEmpty: true
+    }
+  },
+  email: {
+    type: Sequelize.STRING,
+    validate: {
+      isEmail: true,
+      notNull: true,
+      notEmpty: true
+    }
+  },
+  password: {
+    type: Sequelize.STRING,
+    validate: {
+      isAlphanumeric: true,
+      min: 6,
+      notNull: true,
+      notEmpty: true
+    },
+    set: function(val) {
+      this.setDataValue('password', bcrypt.hashSync(val));
+    }
+  },
+  // The following is address data; this should be moved to a separate table later on.
+  street: {
+    type: Sequelize.STRING,
+    validate: {
+      notNull: true,
+      notEmpty: true
+    }
+  },
+  city: {
+    type: Sequelize.STRING,
+    validate: {
+      notNull: true,
+      notEmpty: true
+    }
+  },
+  state: {
+    type: Sequelize.STRING,
+    validate: {
+      notNull: true,
+      notEmpty: true
+    }
+  },
+  postal_code: {
+    type: Sequelize.STRING,
+    validate: {
+      notNull: true,
+      notEmpty: true
+    }
+  }
+}, {
+  timestamps: true,
+  paranoid: true
+});
 
-// Instance methods
-User.prototype.save = function() {
+// Job Model
+var Job = connection.define('job', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  start: {
+    type: Sequelize.DATE
+  },
+  category: {
+    type: Sequelize.STRING
+  },
+  summary: {
+    type: Sequelize.TEXT
+  }
+}, {
+  timestamps: true,
+  paranoid: true
+});
 
-};
+// Job relationships
+User.hasMany(Job, { as: 'jobs' });
 
-User.prototype.update = function(attributes) {
-
-}
-
-User.prototype.delete = function() {
-
-};
-
-User.prototype.addJob = function(job, email){
-	User.findByEmail.then(function(user){
-		user.addJobs(job);
-	});
-};
-
-// Static methods
-User.findById = function(id) {
-	return this._table.findOne({
-		where: {
-			id: id
-		}
-	});
-};
-
-User.findByEmail = function(email) {
-	return this._table.findOne({
-		where:{
-			email: email
-		}
-	});
-};
-
-User.deleteById = function(id) {
-
-};
-
-User.logIn = function(username, password) {
-	User.findByEmail(username).then(function(user) {
-		bcrypt.comparePassword(password, this._password, function(err, res) {
-			if (res) {
-				return user;
-			}
-		});
-	});
-};
-
-User.hashPassword = function(password) {
-	return bcrypt.hashSync(password);
-};
-
-var Job = function(attributes) {
-	this._table = JobTable;
-
-	this._coordinates = attributes.coordinates;
-	this._start = attributes.start;
-	this._end = attributes.end;
-	this._summary = attributes.description;
-	this._category = attributes.category;
-};
+connection.sync();
 
 module.exports = {
-	User: User,
-	Job: Job
+  connection: connection,
+  User: User,
+  Job: Job
 };

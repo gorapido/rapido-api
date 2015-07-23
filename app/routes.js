@@ -17,28 +17,15 @@ module.exports = function(router) {
 
   router.post('/users', function(req, res) {
     // Create a new user
-    new User(req.body).save().then(function(user) {
-      res.json(user);
-    });
+    res.send({});
   });
 
   router.route('/users/:id').get(function(req, res) {
     // Get a user by id
-    User.findById(req.params.id).then(function(user) {
-      res.json(user);
-    });
   }).patch(function(req, res) {
     // Update user information
-    User.findById(req.params.id).then(function(user) {
-      user.update(req.body.params).then(function(user) {
-        res.json(user);
-      });
-    });
   }).delete(function(req, res) {
     // Delete a user
-    User.deleteById(req.params.id).then(function(user) {
-      res.json(user);
-    });
   });
 
   router.route('/users/:user_id/jobs').get(function(req, res) {
