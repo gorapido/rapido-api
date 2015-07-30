@@ -10,11 +10,6 @@ var database = config.database;
 // DB connection
 var connection = new Sequelize(database.name, database.username, database.password, database.options);
 
-// Check if connection was successful
-connection.authenticate().catch(function(error) {
-  throw new Error("Database connection failed! Please check your configuration.");
-});
-
 // User Model
 var User = connection.define('user', {
   id: {
@@ -27,86 +22,84 @@ var User = connection.define('user', {
     type: Sequelize.STRING,
     validate: {
       isAlpha: true,
-      isUppercase: true,
-      notNull: true,
       notEmpty: true
-    },
-    set: function(val) {
-      this.setDataValue('first_name', val.toUpperCase());
     }
   },
   last_name: {
     type: Sequelize.STRING,
     validate: {
       isAlpha: true,
-      isUppercase: true,
-      notNull: true,
       notEmpty: true
-    },
-    set: function(val) {
-      this.setDataValue('last_name', val.toUpperCase());
     }
   },
   phone: {
     type: Sequelize.STRING,
+    unique: true,
     validate: {
-      notNull: true,
       notEmpty: true
     }
   },
   email: {
     type: Sequelize.STRING,
+    unique: true,
     validate: {
       isEmail: true,
-      notNull: true,
       notEmpty: true
     }
   },
   password: {
     type: Sequelize.STRING,
     validate: {
-      isAlphanumeric: true,
       min: 6,
-      notNull: true,
       notEmpty: true
     },
     set: function(val) {
       this.setDataValue('password', bcrypt.hashSync(val));
     }
+  }
+}, {
+  timestamps: true
+});
+
+// Address Model
+var Address = connection.define('address', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
   },
-  // The following is address data; this should be moved to a separate table later on.
   street: {
     type: Sequelize.STRING,
     validate: {
-      notNull: true,
       notEmpty: true
     }
   },
   city: {
     type: Sequelize.STRING,
     validate: {
-      notNull: true,
       notEmpty: true
     }
   },
   state: {
     type: Sequelize.STRING,
     validate: {
-      notNull: true,
       notEmpty: true
     }
   },
   postal_code: {
     type: Sequelize.STRING,
     validate: {
-      notNull: true,
       notEmpty: true
     }
   }
 }, {
-  timestamps: true,
-  paranoid: true
+  timestamps: true
 });
+
+// Address relationships
+User.hasMany(Address, { as: 'addresses' });
+Address.belongsTo(User);
 
 // Job Model
 var Job = connection.define('job', {
@@ -126,17 +119,18 @@ var Job = connection.define('job', {
     type: Sequelize.TEXT
   }
 }, {
-  timestamps: true,
-  paranoid: true
+  timestamps: true
 });
 
 // Job relationships
 User.hasMany(Job, { as: 'jobs' });
+Job.belongsTo(User);
 
-connection.sync();
+// connection.sync();
 
 module.exports = {
   connection: connection,
   User: User,
+  Address: Address,
   Job: Job
 };

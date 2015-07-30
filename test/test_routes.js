@@ -19,12 +19,11 @@ module.exports = {
               state: 'TX',
               postal_code: '75081'
             }
-          },
-          function(error, response, body) {
+          }, function(error, response, body) {
             assert.equal(response.statusCode, 200);
             assert.notEqual(body.id, null);
         });
       }
     }
   }
-}
+};
