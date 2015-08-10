@@ -4,7 +4,7 @@ var Sequelize = require('sequelize'),
 
 // Configuration by NODE_ENV (test, development, production)
 var env = process.env.NODE_ENV || "development";
-var config = require('./../config')[env];
+var config = require('./config')[env];
 var database = config.database;
 
 // DB connection
@@ -56,9 +56,23 @@ var User = connection.define('user', {
     set: function(val) {
       this.setDataValue('password', bcrypt.hashSync(val));
     }
+  },
+  facebook: {
+    type: Sequelize.STRING
+  },
+  google: {
+    type: Sequelize.STRING
+  },
+  outlook: {
+    type: Sequelize.STRING
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  instanceMethods: {
+    validatePassword: function(password) {
+      return bcrypt.compareSync(password, this.password);
+    }
+  }
 });
 
 // Address Model
@@ -101,6 +115,62 @@ var Address = connection.define('address', {
 User.hasMany(Address, { as: 'addresses' });
 Address.belongsTo(User);
 
+// Company model
+var Company = connection.define('company', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  name: {
+    type: Sequelize.STRING
+  }
+}, {
+  timestamps: true
+});
+
+// Tag model
+var Tag = connection.define('tag', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  name: {
+    type: Sequelize.STRING
+  }
+}, {
+  timestamps: true
+});
+
+// Tag relationships
+Company.belongsToMany(Tag, { through: 'CompanyTag' });
+Tag.belongsToMany(Company, { through: 'CompanyTag' });
+
+// Employee model
+var Employee = connection.define('employee', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  role: {
+    type: Sequelize.STRING
+  }
+}, {
+  timestamps: true
+});
+
+// Employee relationships
+User.hasMany(Employee);
+Employee.belongsTo(User);
+
+Company.hasMany(Employee);
+Employee.belongsTo(Company);
+
 // Job Model
 var Job = connection.define('job', {
   id: {
@@ -110,6 +180,9 @@ var Job = connection.define('job', {
     unique: true
   },
   start: {
+    type: Sequelize.DATE
+  },
+  finish: {
     type: Sequelize.DATE
   },
   category: {
@@ -123,14 +196,44 @@ var Job = connection.define('job', {
 });
 
 // Job relationships
-User.hasMany(Job, { as: 'jobs' });
-Job.belongsTo(User);
+Address.belongsToMany(Job, { through: 'JobAddress' });
+Job.belongsToMany(Address, { through: 'JobAddress'});
 
-// connection.sync();
+Employee.belongsTo(Job);
+Job.hasOne(Employee);
+
+// Coordinate model
+var Coordinate = connection.define('coordinate', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  latitude: {
+    type: Sequelize.DOUBLE
+  },
+  longitude: {
+    type: Sequelize.DOUBLE
+  }
+}, {
+  timestamps: true
+});
+
+// Coordinate relationships
+Coordinate.belongsToMany(Job, { through: 'JobCoordinate' });
+Job.belongsToMany(Coordinate, { through: 'JobCoordinate' });
+
+Employee.belongsToMany(Coordinate, { through: 'EmployeeCoordinate' });
+Coordinate.belongsToMany(Employee, { through: 'EmployeeCoordinate' });
+
+Address.hasOne(Coordinate);
+Coordinate.belongsTo(Address);
 
 module.exports = {
   connection: connection,
   User: User,
   Address: Address,
+  Coordinate: Coordinate,
   Job: Job
 };

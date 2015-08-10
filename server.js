@@ -1,16 +1,18 @@
 var express = require('express'),
 	bodyParser = require('body-parser'),
-	logger = require('morgan');
+	logger = require('morgan'),
+	passport = require('passport');
 var app = express();
-var connection = require('./app/models').connection;
+var connection = require('./models').connection;
 
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(passport.initialize());
 
 app.set('port', process.env.PORT || 3000);
 
-var routes = require('./app/routes')(express.Router());
+var routes = require('./routes')(express.Router());
 
 app.use('/v1', routes);
 
