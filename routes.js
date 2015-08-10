@@ -140,7 +140,9 @@ module.exports = function(router) {
         });
       }
       else if (req.body.coordinate) {
-        Coordinate.create(req.body.coordinate).then(function(coordinate) {
+        var coordinate = JSON.parse(req.body.coordinate);
+
+        Coordinate.create(coordinate).then(function(coordinate) {
           job.addCoordinate(coordinate);
         });
       }
@@ -180,7 +182,18 @@ module.exports = function(router) {
     });
   });
 
+  var jobCoordinate = express.Router({ mergeParams: true });
+
+  jobCoordinate.route('/').get(function(req, res) {
+    Job.findById(req.params.jobId).then(function(job) {
+      job.getCoordinates().then(function(coordinate) {
+        res.json(coordinate);
+      });
+    });
+  });
+
   jobs.use('/:jobId/address', jobAddress);
+  jobs.use('/:jobId/coordinate', jobCoordinate);
 
   router.use('/jobs', jobs);
 

@@ -227,8 +227,8 @@ Job.belongsToMany(Coordinate, { through: 'JobCoordinate' });
 Employee.belongsToMany(Coordinate, { through: 'EmployeeCoordinate' });
 Coordinate.belongsToMany(Employee, { through: 'EmployeeCoordinate' });
 
-Address.hasOne(Coordinate);
-Coordinate.belongsTo(Address);
+// Address.hasOne(Coordinate);
+// Coordinate.belongsTo(Address);
 
 module.exports = {
   connection: connection,
