@@ -199,8 +199,11 @@ var Job = connection.define('job', {
 Address.belongsToMany(Job, { through: 'JobAddress' });
 Job.belongsToMany(Address, { through: 'JobAddress'});
 
-Employee.belongsTo(Job);
-Job.hasOne(Employee);
+Job.belongsTo(Employee);
+Employee.hasMany(Job);
+
+Job.belongsTo(User);
+User.hasMany(Job);
 
 // Coordinate model
 var Coordinate = connection.define('coordinate', {

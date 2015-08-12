@@ -87,15 +87,31 @@ module.exports = function(router) {
   var userJobs = express.Router({ mergeParams: true });
 
   userJobs.route('/').get(function(req, res) {
-    Job.findAll({
-      include: [{
-        model: Address,
-        where: {
-          userId: req.params.userId
-        }
-      }]
-    }).then(function(jobs) {
-      res.json(jobs);
+    User.findById(req.params.userId).then(function(user) {
+      var q = {};
+
+      if (req.query.filter == 'upcoming') {
+        q = {
+          where: {
+            start: { 
+              $gt: new Date()
+            }
+          }
+        };
+      }
+      else if (req.query.filter == 'past') {
+        q = {
+          where: {
+            start: { 
+              $lt: new Date()
+            }
+          }
+        };
+      }
+
+      user.getJobs(q).then(function(jobs) {
+        res.json(jobs);
+      });
     });
   });
 
