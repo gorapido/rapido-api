@@ -11,6 +11,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(passport.initialize());
 
 app.set('port', process.env.PORT || 3000);
+app.set('view engine', 'jade');
 
 var routes = require('./routes')(express.Router());
 

@@ -1,11 +1,15 @@
 // Global packages
 var Sequelize = require('sequelize'),
-  bcrypt = require('bcrypt-nodejs');
+  bcrypt = require('bcrypt-nodejs'),
+  mandrill = require('mandrill-api/mandrill'),
+  crypto = require('crypto'),
+  twilio = require('twilio')('AC30305b01bf87626c22b822a0584ab5d9', '173b5a54238da3ced4a7face0b1d7098');
 
 // Configuration by NODE_ENV (test, development, production)
 var env = process.env.NODE_ENV || "development";
 var config = require('./config')[env];
 var database = config.database;
+var mailer = new mandrill.Mandrill('QNNwxuvT5GB5R0MkjzZ7Yg');
 
 // DB connection
 var connection = new Sequelize(database.name, database.username, database.password, database.options);
@@ -37,7 +41,28 @@ var User = connection.define('user', {
     unique: true,
     validate: {
       notEmpty: true
+    },
+    set: function(val) {
+      var hash = crypto.randomBytes(20).toString('hex');
+
+      twilio.sendMessage({
+        to: val,
+        from: '+14073782199',
+        body: 'Please confirm your phone number for Rapido by clicking this link: http://account.gorapido.co/confirm_phone?token=' + hash
+      }, function(err, res) {
+        if (!err) {
+
+        }
+        else {
+          console.log(err);
+        }
+      });
+
+      this.setDataValue('phone_confirmation_token', hash);
     }
+  },
+  twilio_phone: {
+    type: Sequelize.STRING
   },
   email: {
     type: Sequelize.STRING,
@@ -45,6 +70,27 @@ var User = connection.define('user', {
     validate: {
       isEmail: true,
       notEmpty: true
+    },
+    set: function(val) {
+      var hash = crypto.randomBytes(20).toString('hex');
+      var message = {
+        "from_email": "support@gorapido.co",
+        "from_name": "Support",
+        "subject": "Please confirm your email for Rapido.",
+        "html": '<p>Please click this link to confirm your email:</p><p>http://account.gorapido.co/confirm_email?token=' + hash + '</p>',
+        "to": [{
+          "email": val
+        }]
+      };
+
+      mailer.messages.send({ message: message }, function(res) {
+        console.log(res);
+      }, function(err) {  
+        console.log(err);
+      });
+
+      this.setDataValue('email_confirmation_token', hash);
+      this.setDataValue('email', val);
     }
   },
   password: {
@@ -63,7 +109,13 @@ var User = connection.define('user', {
   google: {
     type: Sequelize.STRING
   },
-  outlook: {
+  phone_confirmation_token: {
+    type: Sequelize.STRING
+  },
+  email_confirmation_token: {
+    type: Sequelize.STRING
+  },
+  password_reset_token: {
     type: Sequelize.STRING
   }
 }, {
@@ -205,6 +257,9 @@ Employee.hasMany(Job);
 Job.belongsTo(User);
 User.hasMany(Job);
 
+Job.belongsTo(Company);
+Company.hasMany(Job);
+
 // Coordinate model
 var Coordinate = connection.define('coordinate', {
   id: {
@@ -236,6 +291,8 @@ Coordinate.belongsToMany(Employee, { through: 'EmployeeCoordinate' });
 module.exports = {
   connection: connection,
   User: User,
+  Employee: Employee,
+  Company: Company,
   Address: Address,
   Coordinate: Coordinate,
   Job: Job

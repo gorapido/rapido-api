@@ -1,12 +1,18 @@
 module.exports = function(router) {
   var express = require('express'),
-    passport = require('passport');
+    xml = require('xml'),
+    passport = require('passport'),
+    twilio = require('twilio')('AC30305b01bf87626c22b822a0584ab5d9', '173b5a54238da3ced4a7face0b1d7098'),
+    crypto = require('crypto'),
+    mandrill = require('mandrill-api/mandrill');
   var BasicStrategy = require('passport-http').BasicStrategy;
   var models = require('./models');
   var User = models.User,
+    Company = models.Company,
     Address = models.Address,
     Coordinate = models.Coordinate,
     Job = models.Job;
+  var mailer = new mandrill.Mandrill('QNNwxuvT5GB5R0MkjzZ7Yg');
 
   passport.use(new BasicStrategy(function(username, password, done) {
     User.findOne({
@@ -109,6 +115,16 @@ module.exports = function(router) {
         };
       }
 
+      q.include = [
+        { model: Company },
+        { model: Address },
+        { model: Coordinate }
+      ];
+
+      q.order = [
+        ['start', 'DESC']
+      ];
+
       user.getJobs(q).then(function(jobs) {
         res.json(jobs);
       });
@@ -163,13 +179,32 @@ module.exports = function(router) {
         });
       }
 
+      /* User.findById(req.body.userId).then(function(user) {
+        twilio.incomingPhoneNumbers.create({
+          areaCode: '407'
+        }, function(err, purchasedNumber) {
+          if (err == null) {
+            User.set('twilio_phone', purchasedNumber.phone_number);
+          }
+          else {
+            console.log(err);
+          }
+        });
+      }); */
+
       res.json(job);
     });
   });
 
   jobs.route('/:id').get(function(req, res) {
     // Get a job by id
-    Job.findById(req.params.id).then(function(job) {
+    Job.findById(req.params.id, {
+      include: [
+        { model: Company },
+        { model: Address },
+        { model: Coordinate }
+      ]
+    }).then(function(job) {
       res.json(job);
     });
   }).patch(function(req, res) {
@@ -212,6 +247,137 @@ module.exports = function(router) {
   jobs.use('/:jobId/coordinate', jobCoordinate);
 
   router.use('/jobs', jobs);
+
+  // Twiml
+
+  router.post('/twiml_message', function(req, res) {
+    var from = req.body.From;
+    var message = req.body.Message;
+    
+    // Receiver
+    User.findOne({
+      where: {
+        twilio_phone: req.body.To
+      }
+    }).then(function(receiver) {
+
+      // Sender
+      User.findOne({
+        where: {
+          phone: from
+        }
+      }).then(function(sender) {
+        var twiml = new require('twilio').TwimlResponse();
+
+        twiml.message(message, {
+          to: receiver.phone,
+          from: sender.twilio_phone
+        });
+
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml.toString());
+      });
+    });
+  });
+
+  router.post('/twiml_voice', function(req, res) {
+
+  });
+
+  router.get('/confirm_email', function(req, res) {
+    User.findOne({
+      where: {
+        email_confirmation_token: req.query.token
+      }
+    }).then(function(user) {
+      user.email_confirmation_token = null
+
+      user.save().then(function(user) {
+        res.set('Content-Type', 'text/plain');
+        res.send('Your email has been confirmed!');
+      });
+    });
+  });
+
+  router.get('/confirm_phone', function(req, res) {
+    User.findOne({
+      where: {
+        phone_confirmation_token: req.query.token
+      }
+    }).then(function(user) {
+      user.phone_confirmation_token = null
+
+      user.save().then(function(user) {
+        res.set('Content-Type', 'text/plain');
+        res.send('Your phone number has been confirmed!');
+      });
+    });
+  });
+
+  router.route('/reset_password').patch(function(req, res) {
+    User.findOne({ 
+      where: {
+        email: req.query.email
+      }
+    }).then(function(user) {
+      var hash = crypto.randomBytes(20).toString('hex');
+
+      user.set('password_reset_token', hash);
+
+      user.save().then(function(user) {
+        var message = {
+          "from_email": "support@gorapido.co",
+          "from_name": "Support",
+          "subject": "Reset your Rapido email.",
+          "html": '<p>Click here to reset your password:</p><p>http://localhost:3000/v1/reset_password?token=' + hash + '</p>',
+          "to": [{
+            "email": user.email
+          }]
+        };
+
+        mailer.messages.send({ message: message }, function(response) {
+          res.json(response);
+        }, function(err) {  
+          console.log(err);
+        });
+      });
+    });
+  }).post(function(req, res) {
+    if (req.query.token) {
+      if (req.body.password == req.body.confirmPassword) {
+        User.findById(req.query.user).then(function(user) {
+          user.set('password', req.body.password);
+
+          user.save().then(function(user) {
+            res.set('Content-Type', 'text/plain');
+            res.send('Your password has been successfully changed!');
+          });
+        });
+      }
+      else {
+        res.set('Content-Type', 'text/plain');
+        res.send('Uh oh! These passwords don\'t match. Please try again.');
+      }
+    }
+    else {
+      res.redirect('http://gorapido.co');
+    }
+  }).get(function(req, res) {
+    if (req.query.token) {
+      User.findOne({
+        where: {
+          password_reset_token: req.query.token
+        }
+      }).then(function(user) {
+        res.render('password', {
+          url: '/v1/reset_password?token=' + req.query.token + '&user=' + user.get('id')
+        });
+      });
+    }
+    else {
+      res.redirect('http://gorapido.co');
+    }
+  });
 
   return router;
 };
