@@ -22,6 +22,9 @@ var User = connection.define('user', {
     primaryKey: true,
     unique: true
   },
+  avatar: {
+    type: Sequelize.STRING
+  },
   first_name: {
     type: Sequelize.STRING,
     validate: {
@@ -59,6 +62,7 @@ var User = connection.define('user', {
       });
 
       this.setDataValue('phone_confirmation_token', hash);
+      this.setDataValue('phone', val);
     }
   },
   twilio_phone: {
@@ -104,9 +108,6 @@ var User = connection.define('user', {
     }
   },
   facebook: {
-    type: Sequelize.STRING
-  },
-  google: {
     type: Sequelize.STRING
   },
   phone_confirmation_token: {
@@ -175,7 +176,22 @@ var Company = connection.define('company', {
     primaryKey: true,
     unique: true
   },
+  logo: {
+    type: Sequelize.STRING
+  },
   name: {
+    type: Sequelize.STRING
+  },
+  site: {
+    type: Sequelize.STRING
+  },
+  phone: {
+    type: Sequelize.STRING
+  },
+  email: {
+    type: Sequelize.STRING
+  },
+  description: {
     type: Sequelize.STRING
   }
 }, {
@@ -242,14 +258,17 @@ var Job = connection.define('job', {
   },
   summary: {
     type: Sequelize.TEXT
+  },
+  status: {
+    type: Sequelize.STRING
   }
 }, {
   timestamps: true
 });
 
 // Job relationships
-Address.belongsToMany(Job, { through: 'JobAddress' });
 Job.belongsToMany(Address, { through: 'JobAddress'});
+Address.belongsToMany(Job, { through: 'JobAddress' });
 
 Job.belongsTo(Employee);
 Employee.hasMany(Job);
@@ -259,6 +278,58 @@ User.hasMany(Job);
 
 Job.belongsTo(Company);
 Company.hasMany(Job);
+
+// Bid
+var Bid = connection.define('bid', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  amount: {
+    type: Sequelize.DOUBLE
+  }
+});
+
+Bid.belongsTo(Employee);
+Employee.hasMany(Bid);
+
+Bid.belongsTo(Company);
+Company.hasMany(Bid);
+
+Bid.belongsTo(Job);
+Job.hasMany(Bid);
+
+// Review
+var Review = connection.define('review', {
+  id: {
+    type: Sequelize.UUID,
+    defaultValue: Sequelize.UUIDV1,
+    primaryKey: true,
+    unique: true
+  },
+  rating: {
+    type: Sequelize.STRING
+  },
+  summary: {
+    type: Sequelize.STRING
+  }
+}, {
+  timestamps: true
+});
+
+Review.belongsTo(User);
+User.hasMany(Review);
+
+Review.belongsTo(Employee);
+Employee.hasMany(Review);
+
+Review.belongsTo(Company);
+Company.hasMany(Review);
+
+Review.belongsTo(Job);
+Job.hasOne(Review);
 
 // Coordinate model
 var Coordinate = connection.define('coordinate', {
@@ -293,7 +364,9 @@ module.exports = {
   User: User,
   Employee: Employee,
   Company: Company,
+  Review: Review,
   Address: Address,
   Coordinate: Coordinate,
-  Job: Job
+  Job: Job,
+  Bid: Bid
 };

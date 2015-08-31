@@ -9,9 +9,11 @@ module.exports = function(router) {
   var models = require('./models');
   var User = models.User,
     Company = models.Company,
+    Review = models.Review,
     Address = models.Address,
     Coordinate = models.Coordinate,
-    Job = models.Job;
+    Job = models.Job,
+    Bid = models.Bid;
   var mailer = new mandrill.Mandrill('QNNwxuvT5GB5R0MkjzZ7Yg');
 
   passport.use(new BasicStrategy(function(username, password, done) {
@@ -202,7 +204,8 @@ module.exports = function(router) {
       include: [
         { model: Company },
         { model: Address },
-        { model: Coordinate }
+        { model: Coordinate },
+        { model: Bid }
       ]
     }).then(function(job) {
       res.json(job);
@@ -243,10 +246,61 @@ module.exports = function(router) {
     });
   });
 
+  var jobBids = express.Router({ mergeParams: true });
+
+  jobBids.route('/').get(function(req, res) {
+    Job.findById(req.params.jobId).then(function(job) {
+      job.getBids({
+        include: [
+          { model: Company }
+        ]
+      }).then(function(bids) {
+        res.json(bids);
+      });
+    });
+  });
+
   jobs.use('/:jobId/address', jobAddress);
   jobs.use('/:jobId/coordinate', jobCoordinate);
+  jobs.use('/:jobId/bids', jobBids);
 
   router.use('/jobs', jobs);
+
+  // Bids
+
+  router.post('/bids', function(req, res) {
+    Bid.create(req.body).then(function(bid) {
+      res.json(bid);
+    });
+  });
+
+  // Companies
+  router.post('/companies', function(req, res) {
+    Company.create(req.body).then(function(company) {
+      res.json(company);
+    });
+  });
+
+  router.route('/companies/:id').get(function(req, res) {
+    Company.findById(req.params.id, {
+      include: [{ model: Review }]
+    }).then(function(company) {
+      res.json(company);
+    });
+  });
+
+  // Reviews
+  router.post('/reviews', function(req, res) {
+    Review.create(req.body).then(function(review) {
+      res.json(review);
+    });
+  });
+
+  router.route('/reviews/:id').get(function(req, res) {
+    Review.findById(req.params.id).then(function(review) {
+      res.json(review);
+    });
+  });
 
   // Twiml
 
@@ -317,7 +371,7 @@ module.exports = function(router) {
   router.route('/reset_password').patch(function(req, res) {
     User.findOne({ 
       where: {
-        email: req.query.email
+        email: req.body.email
       }
     }).then(function(user) {
       var hash = crypto.randomBytes(20).toString('hex');
