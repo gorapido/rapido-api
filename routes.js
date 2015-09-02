@@ -120,7 +120,11 @@ module.exports = function(router) {
       q.include = [
         { model: Company },
         { model: Address },
-        { model: Coordinate }
+        { model: Coordinate },
+        { 
+          model: Bid,
+          include: [{ model: Company }] 
+        }
       ];
 
       q.order = [
@@ -214,7 +218,14 @@ module.exports = function(router) {
     // Update job info
     Job.findById(req.params.id).then(function(job) {
       job.updateAttributes(req.body).then(function(job) {
-        res.json(job);
+        if (req.body.status == "I'm looking for help.") {
+          console.log("Deleting: " + job.companyId);
+          job.companyId = null;
+        }
+
+        job.save().then(function(job) {
+          res.json(job);
+        });
       });
     });
   }).delete(function(req, res) {
@@ -268,11 +279,15 @@ module.exports = function(router) {
 
   // Bids
 
-  router.post('/bids', function(req, res) {
+  var bids = express.Router();
+
+  bids.post('/', function(req, res) {
     Bid.create(req.body).then(function(bid) {
       res.json(bid);
     });
   });
+
+  router.use('/bids', bids);
 
   // Companies
   router.post('/companies', function(req, res) {
