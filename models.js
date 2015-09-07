@@ -118,6 +118,9 @@ var User = connection.define('user', {
   },
   password_reset_token: {
     type: Sequelize.STRING
+  },
+  apn: {
+    type: Sequelize.STRING
   }
 }, {
   timestamps: true,
@@ -180,6 +183,9 @@ var Company = connection.define('company', {
     type: Sequelize.STRING
   },
   name: {
+    type: Sequelize.STRING
+  },
+  location: {
     type: Sequelize.STRING
   },
   site: {
@@ -310,7 +316,7 @@ var Review = connection.define('review', {
     unique: true
   },
   rating: {
-    type: Sequelize.STRING
+    type: Sequelize.INTEGER
   },
   summary: {
     type: Sequelize.STRING

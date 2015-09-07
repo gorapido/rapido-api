@@ -4,7 +4,8 @@ module.exports = function(router) {
     passport = require('passport'),
     twilio = require('twilio')('AC30305b01bf87626c22b822a0584ab5d9', '173b5a54238da3ced4a7face0b1d7098'),
     crypto = require('crypto'),
-    mandrill = require('mandrill-api/mandrill');
+    mandrill = require('mandrill-api/mandrill'),
+    fbgraph = require('fbgraph');
   var BasicStrategy = require('passport-http').BasicStrategy;
   var models = require('./models');
   var User = models.User,
@@ -15,6 +16,19 @@ module.exports = function(router) {
     Job = models.Job,
     Bid = models.Bid;
   var mailer = new mandrill.Mandrill('QNNwxuvT5GB5R0MkjzZ7Yg');
+  var token = 'd60c06d54cc46d0ece57c1f1e3fc066a';
+
+  router.use(function(req, res, done) {
+    if (req.query.token == token) {
+      done();
+    }
+    else {
+      res.status(401);
+      res.json({
+        "error": "Authentication failed."
+      });
+    }
+  });
 
   passport.use(new BasicStrategy(function(username, password, done) {
     User.findOne({
@@ -39,11 +53,37 @@ module.exports = function(router) {
     res.json(req.user);
   });
 
+  router.post('/FBLogIn', function(req, res) {
+    var token = req.body.token;
+
+    fbgraph.setAccessToken(token);
+
+    fbgraph.get('me?fields=email,first_name,last_name', function(req, data) {
+      User.findOrCreate({
+        where: {
+          email: data.email
+        }
+      }).spread(function(user, created) {
+        if (created == true) {
+          user.set('first_name', data.first_name);
+          user.set('last_name', data.last_name);        
+        }
+        
+        user.set('facebook', token);
+
+        user.save().then(function(user) {
+          res.json(user);
+        });
+      });
+    });
+  });
+
   // Users route
   var users = express.Router();
 
   users.post('/', function(req, res) {
     // Create a new user
+
     User.create(req.body).then(function(user) {
       res.json(user);
     });
@@ -124,7 +164,8 @@ module.exports = function(router) {
         { 
           model: Bid,
           include: [{ model: Company }] 
-        }
+        },
+        { model: Review }
       ];
 
       q.order = [
@@ -298,7 +339,10 @@ module.exports = function(router) {
 
   router.route('/companies/:id').get(function(req, res) {
     Company.findById(req.params.id, {
-      include: [{ model: Review }]
+      include: [{ 
+        model: Review,
+        include: [{ model: User }]
+      }]
     }).then(function(company) {
       res.json(company);
     });
@@ -307,6 +351,12 @@ module.exports = function(router) {
   // Reviews
   router.post('/reviews', function(req, res) {
     Review.create(req.body).then(function(review) {
+      Job.findById(req.body.jobId).then(function(job) {
+        job.set('status', 'All done.');
+
+        job.save();
+      });
+
       res.json(review);
     });
   });

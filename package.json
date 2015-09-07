@@ -18,6 +18,8 @@
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.13.2",
     "express": "~4.13.0",
+    "fbgraph": "^1.0.0",
+    "hat": "0.0.3",
     "jade": "^1.11.0",
     "mandrill-api": "^1.0.45",
     "morgan": "^1.6.1",
